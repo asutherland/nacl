@@ -227,14 +227,15 @@ def configure(conf):
     #from waflib.Tools import c as Tc
     #TaskGen.extension('.s', Tc.c_hook)
 
-    conf.env['CFLAGS'] = ['-O3', '-fomit-frame-pointer', '-funroll-loops',
-                          '-fPIC', '-g']
-    conf.env['CXXFLAGS'] = ['-O3', '-fomit-frame-pointer', '-funroll-loops',
-                            '-fPIC', '-g']
+    #flags = ['-O3', '-fomit-frame-pointer', '-funroll-loops', '-fPIC', '-g']
+    # O2 actually ends up faster than O3 for us... probably a cache thing.
+    flags = ['-O2', '-fPIC', '-g']
+    conf.env['CFLAGS'] = flags
+    conf.env['CXXFLAGS'] = flags
+                           
 
     conf.env['AS'] = 'gcc'
-    conf.env['ASFLAGS'] = ['-O3', '-fomit-frame-pointer', '-funroll-loops',
-                            '-fPIC', '-g']
+    conf.env['ASFLAGS'] = flags
     conf.env['AS_SRC_F'] = '-c'
     conf.env['AS_TGT_F'] = '-o'
 
