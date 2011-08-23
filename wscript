@@ -207,7 +207,7 @@ IMPL_PRIORITY_BY_NAME = {
   'amd64_xmm6': 12,
   'amd64': 10,
   'donna_c64': 8,
-  'core2': 6,
+  'core2': -1, # XXX having problem relocating this...
   '53': 5, # better onetimeauth poly1305 impl than x86 which is no relocatable
   'x86_xmm5': 4,
   'x86': 3,
@@ -263,6 +263,7 @@ def figure_implementations(bld):
     so keep in mind that almost anything we do with a node returns a string
     '''
     src_files = []
+    wrapper_files = []
     hdr_files = []
     src_node = bld.path.get_src()
     bld_node = bld.path.get_bld()
@@ -277,10 +278,6 @@ def figure_implementations(bld):
     # private include headers
 
     src_files.append(src_node.find_node('randombytes/devurandom.c'))
-    
-    randbytes_h_node = inc_bld_node.make_node('randombytes.h')
-    randbytes_h_node.write(
-        src_node.find_node('randombytes/devurandom.h').read())
 
     def hdrfy(src_node, targ_node, data):
         hdrgen = cryptohdr(env=bld.env)
@@ -298,6 +295,9 @@ def figure_implementations(bld):
         
         bld.add_to_group(srcgen)
 
+    randbytes_h_src = src_node.find_node('randombytes/devurandom.h')
+    randbytes_h_node = inc_bld_node.make_node('randombytes.h')
+    hdrfy(randbytes_h_src, randbytes_h_node, randbytes_h_src.read())
 
     def pick_best_impl(node):
         best_pri = -100
@@ -403,7 +403,7 @@ def figure_implementations(bld):
                     any_selected_prim = True
             # - no, a wrapper or something
             elif op_kid_node.name.startswith('wrapper-'):
-                src_files.append(op_kid_node)
+                wrapper_files.append(op_kid_node)
 
         # - create a dummy prim file if none was selected
         #if not any_selected_prim:
@@ -411,6 +411,15 @@ def figure_implementations(bld):
         #        '// dummy; none selected')
 
     bld.stlib(
+        features='c cxx asm',
+        source = src_files + wrapper_files,
+        # we put private headers in each impl build dir...
+        includes = ['./stdints', priv_inc_bld_node, inc_bld_node],
+        target = 'nacl'
+        )
+
+
+    bld.shlib(
         features='c cxx asm',
         source = src_files,
         # we put private headers in each impl build dir...
