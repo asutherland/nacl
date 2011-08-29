@@ -420,7 +420,7 @@ def figure_implementations(bld):
 
 
     bld.shlib(
-        features='c cxx asm',
+        features='c asm',
         source = src_files,
         # we put private headers in each impl build dir...
         includes = ['./stdints', priv_inc_bld_node, inc_bld_node],
