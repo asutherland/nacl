@@ -229,7 +229,7 @@ def configure(conf):
 
     #flags = ['-O3', '-fomit-frame-pointer', '-funroll-loops', '-fPIC', '-g']
     # O2 actually ends up faster than O3 for us... probably a cache thing.
-    flags = ['-O2', '-fPIC', '-g']
+    flags = ['-O2', '-fPIC'] # -g
     conf.env['CFLAGS'] = flags
     conf.env['CXXFLAGS'] = flags
                            
