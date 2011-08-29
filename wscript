@@ -59,7 +59,7 @@
 #  readily available.  We aren't using make because we are trying to decrease
 #  the pain going on and I like that waf colorizes by default.
 
-import os.path, re
+import os.path, re, platform
 from waflib.Task import Task
 from waflib import TaskGen
 
@@ -299,10 +299,33 @@ def figure_implementations(bld):
     randbytes_h_node = inc_bld_node.make_node('randombytes.h')
     hdrfy(randbytes_h_src, randbytes_h_node, randbytes_h_src.read())
 
+    # XXX PLATFORM MAGIC
+    # waf does not seem to have obvious/sufficiently documented platform
+    #  affordances, so we are going to roll our own using the 'platform' module
+    #  here.
+    # Our build goals are as follows (for same-platform):
+    # - Linux: build 32-bit or 64-bit as befits the system setup which we are
+    #    basing on whether the python is 32-bit or 64-bit.
+    # - OS X: build 64-bit.  (We could build a fat binary, but we want different
+    #    implementations based on the cpu architecture we're targeting.)
+    # - Windows: build 32-bit, because that's what firefox builds.
+    platsys = platform.system()
+    if platsys == 'Darwin':
+        plat64 = True
+    elif platsys.find('WIN') != -1 or platsys.find('NT') != -1:
+        plat64 = False
+    elif platsys == 'Linux':
+        plat64 = platform.architecture()[0] == '64bit'
+    else:
+        raise Exception('Unable to figure out platform.  Sorry :(')
+
     def pick_best_impl(node):
         best_pri = -100
         best_node = None
         for impl_name in node.listdir():
+            # skip 64 bit implementations on non-64 bit platforms
+            if not plat64 and impl_name.find('64') != -1:
+                continue
             impl_node = node.make_node([impl_name])
             if not node_is_dir(impl_node):
                 continue

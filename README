@@ -6,3 +6,9 @@ this is kept for version sanity.
 
 Release: 20090405
 Release: 20110221
+
+
+The buildsystem has been altered to use waf.
+
+On windows, you might want to do:
+CC=i686-pc-mingw32-gcc CXX=i686-pc-mingw32-g++ waf configure
