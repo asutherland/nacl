@@ -1,0 +1,23 @@
+#!/bin/bash
+# Tries to help you set up an Android cross-compile if you pass the path to
+#  your Android NDK as the first argument
+NDKDIR=$1
+shift
+TOOLDIR="${NDKDIR}/toolchains/arm-linux-androideabi-4.4.3/prebuilt/linux-x86"
+PLATDIR="${NDKDIR}/platforms/android-5/arch-arm"
+
+PREFIX="arm-linux-androideabi-"
+export AS=${TOOLDIR}/bin/${PREFIX}as
+export CC=${TOOLDIR}/bin/${PREFIX}gcc
+export CXX=${TOOLDIR}/bin/${PREFIX}g++
+export CPP=${TOOLDIR}/bin/${PREFIX}cpp
+export LD=${TOOLDIR}/bin/${PREFIX}ld
+export AR=${TOOLDIR}/bin/${PREFIX}ar
+export RANLIB=${TOOLDIR}/bin/${PREFIX}/ranlib
+export STRIP=${TOOLDIR}/bin/${PREFIX}strip
+
+export CFLAGS="-mandroid -I${PLATDIR}/usr/include"
+# we don't actually use the C++ wrappers for android, so this doesn't matter too much
+export CPPFLAGS="-mandroid -I${PLATDIR}/usr/include -I${NDKDIR}/sources/cxx-stl/gnu-libstdc++/include -I${NDKDIR}/sources/cxx-stl/gnu-libstdc++/libs/armeabi-v7a/include"
+export LDFLAGS="-mandroid -L${PLATDIR}/usr/lib -L{NDKDIR}/sources/cxx-stl/gnu-libstdc++/libs/armeabi-v7a -Wl,-rpath-link=${PLATDIR}/usr/lib --sysroot=${PLATDIR}"
+./waf "$@" configure build

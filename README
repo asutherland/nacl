@@ -10,5 +10,11 @@ Release: 20110221
 
 The buildsystem has been altered to use waf.
 
+On linux and OS X, this should be straightforward:
+./waf configure build
+
 On windows, you might want to do:
-CC=i686-pc-mingw32-gcc CXX=i686-pc-mingw32-g++ waf configure
+CC=i686-pc-mingw32-gcc CXX=i686-pc-mingw32-g++ ./waf configure build
+
+To cross-compile for android (from linux), you might want to do:
+./helpbuild-android /path/to/android-ndk-r6

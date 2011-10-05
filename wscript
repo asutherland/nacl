@@ -59,7 +59,7 @@
 #  readily available.  We aren't using make because we are trying to decrease
 #  the pain going on and I like that waf colorizes by default.
 
-import os.path, re, platform
+import os, os.path, re, platform
 from waflib.Task import Task
 from waflib import TaskGen
 
@@ -208,7 +208,7 @@ IMPL_PRIORITY_BY_NAME = {
   'amd64': 10,
   'donna_c64': 8,
   'core2': -1, # XXX having problem relocating this...
-  '53': 5, # better onetimeauth poly1305 impl than x86 which is no relocatable
+  '53': 5, # better onetimeauth poly1305 impl than x86 which is not relocatable
   'x86_xmm5': 4,
   'x86': 3,
   'inplace': 2,
@@ -230,11 +230,25 @@ def configure(conf):
     #flags = ['-O3', '-fomit-frame-pointer', '-funroll-loops', '-fPIC', '-g']
     # O2 actually ends up faster than O3 for us... probably a cache thing.
     flags = ['-O2', '-fPIC'] # -g
-    conf.env['CFLAGS'] = flags
-    conf.env['CXXFLAGS'] = flags
+    # hack to let android args in easily
+    # XXX obviously, this splitting is unsafe on dirs with spaces in them
+    cflags = flags[:]
+    if 'CFLAGS' in os.environ:
+        cflags.extend(os.environ['CFLAGS'].split(' '))
+    cppflags = flags[:]
+    if 'CPPFLAGS' in os.environ:
+        cppflags.extend(os.environ['CPPFLAGS'].split(' '))
+    conf.env['CFLAGS'] = cflags
+    conf.env['CXXFLAGS'] = cppflags
+    
+    if 'LDFLAGS' in os.environ:
+        conf.env['LDFALGS'] = os.environ['LDFLAGS'].split(' ')
                            
 
-    conf.env['AS'] = 'gcc'
+    if 'AS' in os.environ:
+        conf.env['AS'] = os.environ['AS']
+    else:
+        conf.env['AS'] = 'gcc'
     conf.env['ASFLAGS'] = flags
     conf.env['AS_SRC_F'] = '-c'
     conf.env['AS_TGT_F'] = '-o'
@@ -310,6 +324,7 @@ def figure_implementations(bld):
     #    implementations based on the cpu architecture we're targeting.)
     # - Windows: build 32-bit, because that's what firefox builds.
     platsys = platform.system()
+    platx86 = True
     if platsys == 'Darwin':
         plat64 = True
     elif platsys.find('WIN') != -1 or platsys.find('NT') != -1:
@@ -319,12 +334,27 @@ def figure_implementations(bld):
     else:
         raise Exception('Unable to figure out platform.  Sorry :(')
 
+    # XXX Android cross-platform hack
+    # we ideally would prefer to figure this out from the compiler itself.
+    if 'CFLAGS' in os.environ:
+        # our helper script has us manually include the path...
+        if (os.environ['CFLAGS'].find('android') != -1 and
+              os.environ['CFLAGS'].find('arm') != -1):
+            plat64 = False
+            platx86 = False
+
     def pick_best_impl(node):
         best_pri = -100
         best_node = None
         for impl_name in node.listdir():
             # skip 64 bit implementations on non-64 bit platforms
             if not plat64 and impl_name.find('64') != -1:
+                continue
+            if not platx86 and impl_name.find('x86') != -1:
+                continue
+            if not platx86 and impl_name.find('athlon') != -1:
+                continue
+            if not platx86 and impl_name.find('core2') != -1:
                 continue
             impl_node = node.make_node([impl_name])
             if not node_is_dir(impl_node):
