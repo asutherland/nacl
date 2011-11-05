@@ -218,6 +218,13 @@ IMPL_PRIORITY_BY_NAME = {
   'athlon': -2, # like a 32-bit athlon with their old proprietary extensions?
 }
 
+# Allow providing specific prioritizations on a per-operation basis.  This is
+#  being introduced while fighting VM wonkiness.
+SPECIFIC_OP_IMPL_OVERRIDES = {
+  'crypto_onetimeauth': {
+ }
+}
+
 def options(opt):
     opt.load('compiler_c compiler_cxx asm')
 
@@ -343,7 +350,10 @@ def figure_implementations(bld):
             plat64 = False
             platx86 = False
 
-    def pick_best_impl(node):
+    def pick_best_impl(node, operation):
+        '''
+        Pick the best implementation in a given primitive directory.
+        '''
         best_pri = -100
         best_node = None
         for impl_name in node.listdir():
@@ -363,8 +373,16 @@ def figure_implementations(bld):
             #  apparently are not competent at removing all traces of in git)
             if impl_node.find_node('api.h') is None:
                 continue
-            if IMPL_PRIORITY_BY_NAME[impl_node.name] > best_pri:
-                best_pri = IMPL_PRIORITY_BY_NAME[impl_node.name]
+ 
+            # start with the default priority mapping
+            use_priority = IMPL_PRIORITY_BY_NAME[impl_name]
+            # let specific operation overrides be processed
+            if (SPECIFIC_OP_IMPL_OVERRIDES.has_key(operation) and
+                SPECIFIC_OP_IMPL_OVERRIDES[operation].has_key(impl_name)):
+                use_priority = SPECIFIC_OP_IMPL_OVERRIDES[operation][impl_name]
+
+            if  use_priority > best_pri:
+                best_pri = use_priority
                 best_node = impl_node
         return best_node
 
@@ -383,8 +401,9 @@ def figure_implementations(bld):
 
         primitive = node.name;
 
-        impl_node = pick_best_impl(node)
+        impl_node = pick_best_impl(node, operation)
         impl_name = impl_node.name
+        print '  Selected', impl_name, 'for', (operation + ':' + primitive)
 
         # create the operation-primitive header (we must be used if here)
         api_node = impl_node.find_node('api.h')
