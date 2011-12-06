@@ -236,7 +236,7 @@ def configure(conf):
 
     #flags = ['-O3', '-fomit-frame-pointer', '-funroll-loops', '-fPIC', '-g']
     # O2 actually ends up faster than O3 for us... probably a cache thing.
-    flags = ['-O2', '-fPIC'] # -g
+    flags = ['-O0', '-fPIC'] # -g
     # hack to let android args in easily
     # XXX obviously, this splitting is unsafe on dirs with spaces in them
     cflags = flags[:]
