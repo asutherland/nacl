@@ -1,0 +1,9 @@
+#!/bin/bash
+# Tries to help you set up an emscripten JS cross-compile if you pass the path
+#  to your emscripten dir as the first arg.  Because emscripten provides the
+#  helpful "emconfigure" script, we don't have to do much.
+EMDIR=$1
+shift
+
+
+${EMDIR}/emconfigure ./waf "$@" configure build
