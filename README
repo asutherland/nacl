@@ -18,3 +18,10 @@ CC=i686-pc-mingw32-gcc CXX=i686-pc-mingw32-g++ ./waf configure build
 
 To cross-compile for android (from linux), you might want to do:
 ./helpbuild-android /path/to/android-ndk-r6
+
+An attempt has been made to build nacl under emscripten, but the result did not
+appear to work.  (Note: the elimination stage had to be skipped because of
+memory exhaustion.)  Most specifically, signature creation seemed to go into an
+infinite loop.  See the node.js bindings for the unit test logic.  You can
+try and do emscripten builds by doing:
+./helpbuild-emscripten /path/to/emscripten
