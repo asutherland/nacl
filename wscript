@@ -237,6 +237,17 @@ def configure(conf):
     #flags = ['-O3', '-fomit-frame-pointer', '-funroll-loops', '-fPIC', '-g']
     # O2 actually ends up faster than O3 for us... probably a cache thing.
     flags = ['-O0', '-fPIC'] # -g
+
+    # emscripten specifics
+    if 'CC' in os.environ and os.environ['CC'].find('emcc') != -1:
+        print 'Emscripten configure mode enabled'
+        # lose all optimization flags; emscripten likes to optimize during the
+        #  JS generation
+        flags.remove('-O0')
+        conf.env['shlib_PATTERN'] = 'lib%s.o'
+        conf.env['cshlib_PATTERN'] = 'lib%s.o'
+        conf.env['cxxshlib_PATTERN'] = 'lib%s.o'
+
     # hack to let android args in easily
     # XXX obviously, this splitting is unsafe on dirs with spaces in them
     cflags = flags[:]
@@ -249,7 +260,7 @@ def configure(conf):
     conf.env['CXXFLAGS'] = cppflags
     
     if 'LDFLAGS' in os.environ:
-        conf.env['LDFALGS'] = os.environ['LDFLAGS'].split(' ')
+        conf.env['LDFLAGS'] = os.environ['LDFLAGS'].split(' ')
                            
 
     if 'AS' in os.environ:
@@ -259,6 +270,7 @@ def configure(conf):
     conf.env['ASFLAGS'] = flags
     conf.env['AS_SRC_F'] = '-c'
     conf.env['AS_TGT_F'] = '-o'
+
 
 def node_is_dir(node):
     return os.path.isdir(node.abspath())
@@ -332,6 +344,9 @@ def figure_implementations(bld):
     # - Windows: build 32-bit, because that's what firefox builds.
     platsys = platform.system()
     platx86 = True
+    buildShared = True
+    buildStaticForNode = True
+    buildJS = False
     if platsys == 'Darwin':
         plat64 = True
     elif platsys.find('WIN') != -1 or platsys.find('NT') != -1:
@@ -349,6 +364,17 @@ def figure_implementations(bld):
               os.environ['CFLAGS'].find('arm') != -1):
             plat64 = False
             platx86 = False
+            buildStaticForNode = False
+
+    # emscripten quasi-hack; we want want ARM gets; non-assembly ref/portable
+    #  stuff.
+    if 'CC' in os.environ and os.environ['CC'].find('emcc') != -1:
+        print 'Emscripten build mode enabled, yos'
+        plat64 = False
+        platx86 = False
+        buildStaticForNode = False
+        buildShared = False
+        buildJS = True
 
     def pick_best_impl(node, operation):
         '''
@@ -482,22 +508,42 @@ def figure_implementations(bld):
         #    inc_bld_node.make_node('%s.h' % (op,)).write(
         #        '// dummy; none selected')
 
-    bld.stlib(
-        features='c cxx asm',
-        source = src_files + wrapper_files,
-        # we put private headers in each impl build dir...
-        includes = ['./stdints', priv_inc_bld_node, inc_bld_node],
-        target = 'nacl'
-        )
+    # - statlic lib for the node.js bindings
+    # this fellow was written using the C++ bindings so needs them
+    if buildStaticForNode:
+        bld.stlib(
+            features='c cxx asm',
+            source = src_files + wrapper_files,
+            # we put private headers in each impl build dir...
+            includes = ['./stdints', priv_inc_bld_node, inc_bld_node],
+            target = 'nacl'
+            )
 
 
-    bld.shlib(
-        features='c asm',
-        source = src_files,
-        # we put private headers in each impl build dir...
-        includes = ['./stdints', priv_inc_bld_node, inc_bld_node],
-        target = 'nacl'
-        )
+    # - shared lib for js-ctypes exposure
+    if buildShared:
+        bld.shlib(
+            features='c asm',
+            source = src_files,
+            # we put private headers in each impl build dir...
+            includes = ['./stdints', priv_inc_bld_node, inc_bld_node],
+            target = 'nacl'
+            )
+
+    if buildJS:
+        bitcode = bld.shlib(
+            features='c asm',
+            source = src_files,
+            # we put private headers in each impl build dir...
+            includes = ['./stdints', priv_inc_bld_node, inc_bld_node],
+            target = 'nacl'
+            )
+        bld(
+            rule='${CC} -O1 -sLINKABLE=1 ${SRC} -o ${TGT}',
+            source = 'libnacl.o',
+            target = 'libnacl.js'
+            )
+
         
 
 def build(bld):

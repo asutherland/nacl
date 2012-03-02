@@ -5,5 +5,11 @@
 EMDIR=$1
 shift
 
+export EMCC_DEBUG=1
 
-${EMDIR}/emconfigure ./waf "$@" configure build
+#${EMDIR}/emmake bash -c "env | sort"
+#${EMDIR}/emconfigure bash -c "env | sort"
+${EMDIR}/emconfigure ./waf "$@" configure
+${EMDIR}/emmake ./waf "$@" build
+
+#${EMDIR}/emcc build/libnacl.so -o build/libnacl.js
